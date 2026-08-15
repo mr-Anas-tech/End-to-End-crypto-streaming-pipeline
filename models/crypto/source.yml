@@ -1,0 +1,7 @@
+sources:
+  - name: Crypto_project
+    catalog: crypto_project_cat
+    schema: default
+    tables:
+      - name: historical_crypto_data
+      - name: streaming_crypto_data
