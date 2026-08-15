@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: dim_crypto_assets
+    description: "Dimension table containing lifetime aggregation and metadata for crypto assets."
+    columns:
+      - name: crypto_name
+        description: "Primary key / unique name of the cryptocurrency."
+        tests:
+          - unique
+          - not_null
+
+      - name: total_lifetime_ticks
+        description: "Total combined count of trades."
+        tests:
+          - not_null
+
+  - name: fct_crypto_hourly_metrics
+    description: "Fact table containing hourly OHLC metrics and trade aggregations."
+    columns:
+      - name: trade_hour
+        description: "Truncated hourly timestamp."
+        tests:
+          - not_null
+
+      - name: crypto_name
+        description: "Cryptocurrency symbol/name."
+        tests:
+          - not_null
+
+      - name: open_price_usd
+        description: "Opening price for the hourly candle."
+        tests:
+          - not_null
+
+      - name: high_price_usd
+        description: "Highest price reached in the hour."
+        tests:
+          - not_null
+
+      - name: low_price_usd
+        description: "Lowest price reached in the hour."
+        tests:
+          - not_null
+
+      - name: close_price_usd
+        description: "Closing price for the hourly candle."
+        tests:
+          - not_null
