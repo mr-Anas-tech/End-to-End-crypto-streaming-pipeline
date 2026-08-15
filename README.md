@@ -1,56 +1,57 @@
-# End-to-End-crypto-streaming-pipeline
-# 🪙 Crypto Market Data Ingestion Pipeline (Batch Layer)
+# 🪙 Enterprise Crypto Hybrid Data Engine (Batch & Streaming) Data Source & Data Landing
 
-[![Azure Data Factory](https://img.shields.io/badge/Azure%20Data%20Factory-0078D4?style=for-the-badge&logo=azure-data-factory&logoColor=white)](https://azure.microsoft.com/en-us/products/data-factory)
-[![Azure Data Lake Gen2](https://img.shields.io/badge/Azure%20Data%20Lake%20Storage-0078D4?style=for-the-badge&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/en-us/products/storage/data-lake-storage/)
-[![Binance Public Data](https://img.shields.io/badge/Source-Binance%20Vision-F3BA2F?style=for-the-badge&logo=binance&logoColor=black)](https://data.binance.vision/)
-[![Pipeline Status](https://img.shields.io/badge/Pipeline%20Status-Succeeded-brightgreen?style=for-the-badge)](https://azure.microsoft.com)
 
----
+## 📌 Business Overview & Hybrid Strategy
 
-## 📌 Executive Summary (For Non-Technical Readers)
+This project delivers an end-to-end data engineering platform on **Microsoft Azure** designed to capture both historical trade archives and high-frequency live market signals for cryptocurrency pairs (focusing on BTC/USDT).
 
-### 💡 What Does This Project Do?
-This project automates the retrieval of raw, historical cryptocurrency trading data (specifically **BTC/USDT** spot market trades) directly from public exchanges like **Binance Vision** and securely moves it into a centralized cloud storage environment on **Microsoft Azure**.
-
-### 🎯 Business Value & Objectives
-* **Automated Data Landing**: Eliminates manual downloads by scheduling automated pipeline runs to fetch compressed historical monthly archives.
-* **Cost Efficiency**: Pulls compressed files (`.zip`) directly across web endpoints to reduce data transfer overhead before storing them in Azure Data Lake Storage (Bronze Layer).
-* **Foundation for Analytics**: Serves as the reliable **Batch Ingestion Foundation** for downstream data transformation, AI/ML price forecasting models, and executive dashboards.
+### 🎯 Key Engineering Goals
+* **Dual-Ingestion Pipeline**: Integrates high-volume **Batch historical backfills** with low-latency **Real-Time price streaming** within a unified cloud architecture.
+* **Cost-Optimized Ingestion**: Utilizes serverless orchestration (Azure Logic Apps & Data Factory) to eliminate continuous compute costs while fetching compressed raw files and REST API payloads.
+* **Medallion Architecture Foundation**: Raw historical zips and live JSON streams land directly into the **Bronze Storage Layer**, forming an immutable landing zone ready for PySpark/Databricks transformation.
 
 ---
 
-## 🏗️ Architecture & Data Flow
+## 🏗️ Technical Architecture & Data Ingestion Flow
 
-Below is the end-to-end lineage of how historical data flows from the source web endpoint into the Azure Cloud storage destination:
+### 1. Batch Historical Flow (Azure Data Factory)
+1. **Public Source**: Connects to the public **Binance Vision** HTTP file repository (`https://data.binance.vision/`).
+2. **Orchestration**: The ADF pipeline `pl_ingest_crypto` executes an HTTP `GET` request using the `month_param` dataset.
+3. **Data Landing**: Streams the raw compressed `.zip` payload directly into **Azure Data Lake Storage Gen2** (`azcriptoprojectstorage`) under the `bronze/historical_crypto_data` directory using a **Flatten Hierarchy** copy strategy.
 
-┌────────────────────────────────────────────────────────┐
-│               Public Source Endpoint                   │
-│        Binance Vision Data Repository (HTTP)           │
-│   (URL: [https://data.binance.vision/data/spot/](https://data.binance.vision/data/spot/)...)     │
-└──────────────────────────┬─────────────────────────────┘
-                           │
-                           │ HTTP GET Method
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│               Azure Data Factory (ADF)                 │
-│             Pipeline: pl_ingest_crypto                 │
-│                                                        │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ Activity: Copy data1 (Copy Activity)             │  │
-│  │  • Linked Service Source : Httpcryptoproject     │  │
-│  │  • Linked Service Sink   : ls_adls_bronze        │  │
-│  └──────────────────────────────────────────────────┘  │
-└──────────────────────────┬─────────────────────────────┘
-                           │
-                           │ Secure Cloud Transfer (ZipDeflate Stream)
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│             Azure Data Lake Storage Gen2               │
-│           Account: azcriptoprojectstorage              │
-│                                                        │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ Path: bronze / historical_crypto_data            │  │
-│  │ File: BTCUSDT-trades-2025-01.zip                 │  │
-│  └──────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────┘
+### 2. Real-Time Streaming Flow (Serverless Event Producer)
+1. **Polling Trigger**: An Azure Logic App (`live-crypto-producer`) triggers every **2 minutes** on a serverless cron schedule.
+2. **API Data Extraction**: Executes an HTTP `GET` request against the **CoinGecko REST API** (`https://api.coingecko.com/api/v3/simple/price`) to capture current spot metrics for BTC/USD.
+3. **Event Hub Dispatch**: Serializes the REST HTTP response payload as a string and publishes it directly into an **Azure Event Hubs** topic (`cripto-live-trades`).
+
+---
+
+## ⚙️ Azure Data Factory (Batch Module Configurations)
+
+### Connections & Linked Services
+* **`Httpcryptoproject`**: HTTP Linked Service targeted at Binance Vision using `AutoResolveIntegrationRuntime` with Anonymous access.
+* **`ls_adls_bronze`**: ADLS Gen2 Linked Service configured with Account Key authentication pointing to the target storage container URL (`https://azcriptoprojectstorage.dfs.core.windows.net/`).
+
+### Ingestion Dataset Specifications
+* **Source (`month_param`)**: Binary HTTP Dataset configured to extract `data/spot/monthly/trades/BTCUSDT/BTCUSDT-trades-2025-01.zip` using `ZipDeflate (.zip)` optimal compression.
+* **Sink (`ds_adls_binary_sink`)**: Binary ADLS Gen2 Dataset pointing to container `bronze` and path `historical_crypto_data`.
+
+### Run Verification & Performance
+* **Pipeline Name**: `pl_ingest_crypto`
+* **Run ID**: `bb33df68-3ffd-4e1d-b1ae-b0cd274e26a9`
+* **Status**: `Succeeded`
+* **Duration**: `7m 41s`
+
+---
+
+## ⚡ Azure Logic Apps (Real-Time Streaming Module)
+
+### Workflow Actions (`live-crypto-producer`)
+* **Trigger (`Recurrence`)**: Runs continuously at **2-minute** intervals.
+* **Fetch Price (`HTTP`)**: Queries CoinGecko API (`ids=bitcoin&vs_currencies=usd`) returning real-time spot price JSON.
+* **Publish Event (`Send event`)**: Uses connection `new_conn_3522a` to push `string(body('HTTP'))` payload into Event Hub `cripto-live-trades`.
+
+### Execution Latency & Metrics
+* **Status**: Verified `Succeeded` across consecutive automated cycles.
+* **Publish Latency**: Sub-second event delivery (**200ms – 270ms** per execution).
+
