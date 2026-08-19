@@ -98,7 +98,7 @@ https://github.com/user-attachments/assets/ecd6a2dc-5dd3-480e-bb0d-2f7593c08ed4
 * **Delta Persistence**: Appends structured stream event records into Unity Catalog Delta table `Crypto_project_cat.default.streaming_crypto_data`.
 
 #### 4. Automated Workflow Scheduling & Monitoring
-* **Job Execution**: The streaming transformation pipeline is deployed as an automated Databricks Workflow Job (`stream_data_tranformation`).
+* **Job Execution**: The streaming transformation pipeline is deployed as an automated Databricks Workflow Job (`stream_data_tranformation` & data `landing into containers`).
 * **Trigger Recurrence**: Runs automatically every 4 hours using single-node or multi-node clusters (`Crypto_project 2XS`).
 * **Execution Metrics**: Consistently maintains an average run duration between **3m 56s** and **6m 46s** with verified `Succeeded` run statuses across automated cycles.
 
@@ -110,6 +110,14 @@ https://github.com/user-attachments/assets/ecd6a2dc-5dd3-480e-bb0d-2f7593c08ed4
 | :--- | :--- | :--- | :--- |
 | **Historical Trades** | `bronze/historical_crypto_data/` | `Crypto_project_cat.default.historical_crypto_data` | Renamed raw index columns (`_c0`-`_c6`) into business field names. |
 | **Live Price Stream** | `bronze/cripto-stream-ns-01/` | `Crypto_project_cat.default.streaming_crypto_data` | Decoded Avro binary payloads to UTF-8 JSON & extracted stream metadata. |
+
+# video
+
+
+
+https://github.com/user-attachments/assets/fa107026-fce9-4fc4-a20d-50431dda2f3b
+
+
 
 
 
@@ -236,3 +244,7 @@ End-to-End-crypto-streaming-pipeline/
 
 
 *
+
+https://github.com/user-attachments/assets/55e7b127-0ee6-44b7-9ddb-ca574852441b
+
+
