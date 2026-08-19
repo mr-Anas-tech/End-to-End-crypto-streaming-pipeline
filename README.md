@@ -266,118 +266,73 @@ End-to-End-crypto-streaming-pipeline/
 https://github.com/user-attachments/assets/55e7b127-0ee6-44b7-9ddb-ca574852441b
 
 
+# dbt Analytics CI/CD Pipeline (GitHub Actions)
+
+This directory contains the Continuous Integration and Continuous Deployment (CI/CD) workflow for the dbt data transformation project. The automation is powered by GitHub Actions to validate dbt models and schema tests against Azure Databricks before merging code into production.
+
+---
+
+## 1. Workflow Configuration Overview
+
+* **Workflow File**: `.github/workflows/dbt_ci_or_cd.yml`
+* **Pipeline Name**: `dbt Analytics CI/CD Pipeline`
+* **Runner Environment**: `ubuntu-latest`
+* **Execution Status**: Succeeded (Typical runtime: ~1m 45s)
+
+---
+
+## 2. Trigger Events
+
+The workflow is automatically triggered under the following Git events:
+* **Push**: Direct commits pushed to the `main` branch.
+* **Pull Request**: Open or updated pull requests targeting the `main` branch.
+
+---
+
+## 3. Pipeline Step Execution Sequence
+
+The `build_and_test` job executes the following sequential steps:
+
+1. **Checkout Repository Code**:
+   * Utilizes `actions/checkout@v4` to pull the project repository into the virtual runner environment.
+
+2. **Set up Python Environment**:
+   * Configures Python `3.10` using `actions/setup-python@v5`.
+
+3. **Install dbt & Databricks Adapter**:
+   * Installs `dbt-core` along with `dbt-databricks` adapter binaries via `pip`.
+
+4. **Setup dbt Profile Connections**:
+   * Dynamically generates the local dbt configuration file (`~/.dbt/profiles.yml`).
+   * Injects secure environment credentials targeting the `crypto_project_cat` catalog and `default` schema on Databricks.
+
+5. **Install dbt Packages**:
+   * Executes `dbt deps` to download and install external package dependencies declared in `packages.yml`.
+
+6. **Run dbt Build (Models & Tests)**:
+   * Runs `dbt build` to compile and execute all upstream/downstream models, seeds, snapshots, and schema assertions (`dbt test`) concurrently across 4 target threads.
+
+---
+
+## 4. GitHub Encrypted Secrets Configuration
+
+To maintain security compliance, connection parameters are safely injected from **GitHub Repository Secrets**:
+
+| Secret Key Name | Purpose | Target Environment Variable |
+| :--- | :--- | :--- |
+| `DBT_HOST` | Azure Databricks Workspace Server Hostname | `host` |
+| `DBT_HTTP_PATH` | SQL Warehouse / Cluster HTTP Transport Path | `http_path` |
+| `DBT_TOKEN` | Databricks Personal Access Token (PAT) | `token` |
+
+---
+
+## 5. Pipeline Validation & Quality Assurance
+
+* Ensures zero broken SQL models or syntax errors across commits.
+* Enforces automated schema testing (non-null, unique keys, referential integrity) prior to code production deployment.
+* Prevents data warehouse regressions by isolating dev runs during pull request checks.
 
 
-================================================================================
-          EXECUTIVE CRYPTO ANALYTICS & DATA PIPELINE ARCHITECTURE
-================================================================================
-
---------------------------------------------------------------------------------
-1. PYTHON CODE (VISUALS 4 & 5 FROM JUPYTER NOTEBOOK)
---------------------------------------------------------------------------------
-
-import plotly.express as px
-
-# --- Visual 4: Ingestion Pipeline Health vs SLA ---
-fig_pipeline_ingestion_health = px.line(
-    df,
-    x="trade_hour",
-    y="streaming_pipeline_health",
-    color="crypto_name",
-    title="<b>4. Pipeline Ingestion Health (Streaming vs Batch Contribution)</b>",
-    labels={
-        "streaming_pipeline_health": "Streaming Ratio (0.0 to 1.0)",
-        "trade_hour": "Trade Hour"
-    },
-    template="plotly_dark"
-)
-fig_pipeline_ingestion_health.add_hline(
-    y=0.8, line_dash="dot", line_color="yellow", annotation_text="80% SLA Threshold"
-)
-fig_pipeline_ingestion_health.show()
-
-
-# --- Visual 5: Structural Lifetime Price Drift (%) ---
-fig_str_p_d = px.area(
-    df,
-    x="trade_hour",
-    y="lifetime_price_drift_pct",
-    color="crypto_name",
-    title="<b>5. Structural Lifetime Price Drift (%)</b>",
-    labels={
-        "lifetime_price_drift_pct": "Drift Deviation (%)",
-        "trade_hour": "Trade Hour"
-    },
-    template="plotly_dark"
-)
-fig_str_p_d.show()
-
-
---------------------------------------------------------------------------------
-2. ROOT-CAUSE ANALYTICAL INSIGHTS & BUSINESS RATIONALE ("THE WHY")
---------------------------------------------------------------------------------
-
-[ METRIC 1: PIPELINE INGESTION HEALTH & SLA TRANSITION ]
-
-  * OBSERVATION:
-    The streaming ingestion ratio linearly increases from 0.0 (Jan 2025) up to 
-    ~0.90 (Jul 2026), officially crossing the 80% SLA threshold in May 2026.
-
-  * WHY THIS METRIC MATTERS & WHAT CAUSES IT:
-    - Legacy Reliance: Early 2025 relied almost entirely on batch scheduled 
-      ELT pipelines, causing high latency (1 to 24 hours behind real-time).
-    - Architecture Migration: The steady upward trend represents an active 
-      engineering migration toward real-time message streaming (e.g., Kafka / 
-      Event Hubs / Spark Streaming).
-    - Business Impact: Low streaming health breaches institutional SLAs. Reaching 
-      >80% streaming coverage ensures that downstream automated trading models 
-      and Synapse analytical dashboards query near real-time data rather than 
-      stale batch snapshots.
-
-
-[ METRIC 2: STRUCTURAL LIFETIME PRICE DRIFT (%) ]
-
-  * OBSERVATION:
-    Initial high noise (+10% to -10%) in early 2025 gives way to a sustained, 
-    expanding negative drift downward to -35% / -40% by mid-2026.
-
-  * WHY THIS METRIC MATTERS & WHAT CAUSES IT:
-    - Regime Shift Detection: Price drift tracks structural decoupling of current 
-      spot prices from historical lifetime moving averages. 
-    - Macro Valuation Compression: The steady negative drift indicates a long-term 
-      bearish structural trend relative to the asset's historical baseline.
-    - Risk & Quant Strategy Impact: Algorithms relying on standard mean-reversion 
-      fail during structural drift. Tracking this percentage forces trading models 
-      to dynamically decay historical weights and recalibrate risk parameters 
-      rather than assuming prices will return to legacy averages.
-
-
-[ METRIC 3: ORDER FLOW IMBALANCE RATIO ]
-
-  * OBSERVATION:
-    Oscillations remain tightly bounded around the zero-line (neutral boundary).
-
-  * WHY THIS METRIC MATTERS & WHAT CAUSES IT:
-    - Microstructure Aggression: Measures buy-side maker volume versus sell-side 
-      maker volume normalized by total ticks.
-    - Market Neutrality: Oscillations near y=0 mean neither buyers nor sellers 
-      permanently dominate trade execution. Sudden sustained spikes above +0.5 
-      or below -0.5 serve as early warning indicators of institutional liquidity 
-      sweeps prior to major price breakouts.
-
-
-[ METRIC 4: WHALE DETECTION & LIQUIDITY MATRIX ]
-
-  * OBSERVATION:
-    Retail transactions form a dense baseline cluster (<$100M total volume, low 
-    trade sizes), while rare institutional trades stand out as distant outliers.
-
-  * WHY THIS METRIC MATTERS & WHAT CAUSES IT:
-    - Market Impact Mitigation: Large trades executed as single orders cause 
-      massive slippage and order-book depletion.
-    - Execution Rationale: Isolating average trade size against volume allows 
-      detecting whether high volume is driven by organic retail participation 
-      or institutional algorithmic execution (TWAP/VWAP iceberg orders).
 
 
 
