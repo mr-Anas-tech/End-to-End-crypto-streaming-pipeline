@@ -6,6 +6,93 @@
 [![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=for-the-badge&logo=databricks&logoColor=white)](https://databricks.com/)
 [![Azure Storage](https://img.shields.io/badge/Azure%20Data%20Lake-0078D4?style=for-the-badge&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/en-us/products/storage/data-lake-storage/)
 
+
+================================================================================
+          COMPLETE ENTERPRISE CRYPTO PLATFORM: TOOL MAP & MATRIX
+================================================================================
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURE VISUAL MAP ("PICS" / ICON FLOW)
+--------------------------------------------------------------------------------
+
+ [ 🌐 Binance / CoinGecko ] 
+       │
+       ├── (Batch Backfill)   ---> [ ⚙️ Azure Data Factory ]  ──┐
+       │                                                       │
+       └── (2-Min Streaming)  ---> [ ⚡ Azure Logic Apps ]     │
+                                           │                   │
+                                           ▼                   ▼
+                                 [ 📡 Azure Event Hubs ] ──> [ 🗄️ ADLS Gen2 (Bronze) ]
+                                                                     │
+                                                                     ▼
+ [ 🔐 Entra ID / Key Vault ] ───────────────────────────────> [ 🧱 Databricks / Spark ]
+                                                                     │
+                                                                     ▼
+ [ 🧪 dbt Cloud Orchestration ] ───────────────────────────> [ 🔺 Delta Lake (Unity Catalog) ]
+                                                                     │
+                                                                     ▼
+                                                             [ 🗄️ ADLS Gen2 (Silver/Gold) ]
+                                                                     │
+                                                                     ▼
+ [ 📊 Plotly / Python ] <─── [ 🔌 PyODBC Token Auth ] <─── [ 🔷 Synapse Serverless SQL ]
+
+
+ * TOOL ICON DIRECTORY:
+   -----------------------------------------------------------------------------
+   [ ⚙️ ] Azure Data Factory  : Serverless batch orchestrator pulling historical archives
+   [ ⚡ ] Azure Logic Apps     : Serverless API fetcher triggering every 2 minutes
+   [ 📡 ] Azure Event Hubs    : Streaming ingestion broker with automatic Avro capture
+   [ 🗄️ ] ADLS Gen2           : Object storage hosting Medallion containers (Bronze/Silver/Gold)
+   [ 🧱 ] Databricks / Spark  : Distributed processing engine decoding Avro to Delta Lake
+   [ 🔺 ] Delta Lake          : ACID-compliant lakehouse storage in Unity Catalog
+   [ 🧪 ] dbt Cloud           : Data transformation, hourly OHLC aggregation, & testing
+   [ 🔷 ] Azure Synapse       : Zero-copy Serverless SQL engine querying Gold Delta views
+   [ 🔐 ] Entra ID / KeyVault : Identity provider, OAuth2 auth, & secret scope manager
+   [ 🔌 ] PyODBC Connector   : Python driver executing SQL queries via dynamic access tokens
+   [ 📊 ] Plotly & Pandas     : Dark-themed visualization & financial feature engineering
+
+
+--------------------------------------------------------------------------------
+2. END-TO-END DATA PIPELINE WORKFLOW & TOOLS MATRIX
+--------------------------------------------------------------------------------
+
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| Workflow Stage        | Tool / Technology     | Tool Category         | System Function & Core Architecture Role         |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 1. Batch Ingestion    | Azure Data Factory    | Cloud Data Integration| Fetches raw zipped historical trade CSVs from    |
+|                       | (ADF Pipelines)       |                       | Binance Vision to ADLS Gen2 Bronze container.     |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 2. Real-Time Producer | Azure Logic Apps      | Serverless Workflow   | Triggers every 2 mins to pull live BTC spot      |
+|                       |                       |                       | pricing payloads from CoinGecko REST API.        |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 3. Event Streaming    | Azure Event Hubs      | Real-Time Event Broker| Ingests high-frequency streams and auto-captures |
+|                       | (Capture Engine)      |                       | payloads directly into Bronze as Avro binary.    |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 4. Lakehouse Storage  | Azure Data Lake       | Cloud Object Storage  | Stores immutable raw data (Bronze), clean Delta  |
+|                       | Storage Gen2 (ADLS)   |                       | tables (Silver), and aggregated marts (Gold).    |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 5. Stream Processing  | Azure Databricks      | Distributed Compute   | Decodes Avro binary files to UTF-8 JSON, applies  |
+|                       | (PySpark / Workflows) | (Apache Spark)        | schema, and schedules 4-hour batch workflows.    |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 6. Lakehouse Catalog  | Delta Lake            | Storage Format &      | Guarantees ACID transactions, schema enforcement,|
+|                       | (Unity Catalog)       | Governance            | and unified catalog management across layers.    |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 7. Transformation     | dbt Cloud             | Analytics Engineering | Deduplicates 135M+ trades, normalizes schemas,   |
+|                       | (Data Modeling)       |                       | and aggregates ticks into hourly OHLC metrics.   |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 8. Analytics Serving  | Azure Synapse         | Serverless SQL Pool   | Exposes zero-copy Gold Delta views using         |
+|                       | Serverless SQL        |                       | OPENROWSET for sub-second analyst querying.      |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 9. Security & Secrets | Azure Entra ID /      | Identity & Key        | Manages passwordless Managed Identity access,    |
+|                       | Databricks Key Vault  | Management            | OAuth tokens, and secure secret scope keys.      |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 10. Quant Analysis    | Python (Pandas/NumPy) | Data Analytics        | Engineers Order Flow Imbalance, VWAP, Price      |
+|                       | & PyODBC              |                       | Drift, and connects securely via token injection.|
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+| 11. Visual Dashboards | Plotly Express        | Interactive Plotting  | Renders dark-themed time-series area charts,     |
+|                       | (Plotly Dark Theme)   |                       | scatter matrices, and SLA threshold lines.       |
++-----------------------+-----------------------+-----------------------+--------------------------------------------------+
+
 ---
 
 ## 📌 Executive Summary & Hybrid Strategy
