@@ -6,7 +6,6 @@
 [![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=for-the-badge&logo=databricks&logoColor=white)](https://databricks.com/)
 [![Azure Storage](https://img.shields.io/badge/Azure%20Data%20Lake-0078D4?style=for-the-badge&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/en-us/products/storage/data-lake-storage/)
 
-
 ================================================================================
           COMPLETE ENTERPRISE CRYPTO PLATFORM: TOOL MAP & MATRIX
 ================================================================================
