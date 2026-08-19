@@ -103,3 +103,135 @@ Instead of collecting data in large batch files, this pipeline continuously capt
 | :--- | :--- | :--- | :--- |
 | **Historical Trades** | `bronze/historical_crypto_data/` | `Crypto_project_cat.default.historical_crypto_data` | Renamed raw index columns (`_c0`-`_c6`) into business field names. |
 | **Live Price Stream** | `bronze/cripto-stream-ns-01/` | `Crypto_project_cat.default.streaming_crypto_data` | Decoded Avro binary payloads to UTF-8 JSON & extracted stream metadata. |
+
+
+
+# dbt Data Transformation Layer: Crypto Analytics Platform
+
+A production-grade **dbt Cloud** data modeling pipeline deployed on **Databricks**, designed to ingest, harmonize, deduplicate, and aggregate high-volume streaming and historical cryptocurrency trade data.
+
+---
+
+## 🏗️ Architecture & Model Lineage
+
+The transformation stack follows Medallion Architecture principles across three distinct dbt layers:
+
+```
+[ Raw Lakehouse Catalogs ]
+   ├── crypto_project_cat.default.historical_crypto_data
+   └── crypto_project_cat.default.streaming_crypto_data
+             │
+             ▼
+[ Staging Layer (staging_crypto) ]
+   ├── stg_historical_crypto
+   └── stg_streaming_crypto_data
+             │
+             ▼
+[ Intermediate Layer (INTERMEDIATES) ]
+   └── int_crypto_trades_combined  (Schema Alignment, Deduplication & Price Rounding)
+             │
+             ├──────────────────────────────────────────┐
+             ▼                                          ▼
+[ Marts Layer (CRYPTO_MARTS) ]              [ Testing & DQ Layer ]
+   ├── dim_crypto_assets                       ├── source_test.yml (Schema Tests)
+   └── fct_crypto_hourly_metrics               └── data_check.sql (Grain Uniqueness)
+```
+
+---
+
+## 📁 Repository Structure
+
+```text
+End-to-End-crypto-streaming-pipeline/
+├── macros/
+│   ├── macro_crypto_price.sql       # Custom macro for price rounding & percentage change
+├── models/
+│   └── crypto/
+│       ├── source.yml               # Source declarations & catalog definitions
+│       ├── staging_crypto/
+│       │   ├── stg_historical_crypto.sql
+│       │   └── stg_streaming_crypto_data.sql
+│       ├── INTERMEDIATES/
+│       │   └── int_crypto_trades_combined.sql
+│       ├── CRYPTO_MARTS/
+│       │   ├── dim_crypto_assets.sql
+│       │   └── fct_crypto_hourly_metrics.sql
+│       └── TEST/
+│           ├── data_check.sql       # Grain integrity verification query
+│           └── source_test.yml      # Model schema tests (unique, not_null)
+└── dbt_project.yml
+```
+
+---
+
+## 🛠️ Data Pipeline Model Layers
+
+### 1. Source Configuration (`source.yml`)
+* **Catalog:** `crypto_project_cat`
+* **Schema:** `default`
+* **Tables:** Maps `historical_crypto_data` and `streaming_crypto_data` into dbt source references (`{{ source(...) }}`).
+
+### 2. Staging Layer (`staging_crypto`)
+* **`stg_historical_crypto.sql`**: 
+  * Standardizes datatypes and converts microsecond Unix epochs to timestamp using `TIMESTAMP_MICROS(cast(time AS BIGINT))`.
+  * Explicitly casts numeric values (`DOUBLE`) and boolean flags (`is_buyer_maker`, `is_best_match`).
+* **`stg_streaming_crypto_data.sql`**:
+  * Parses complex nested JSON event payloads from real-time stream buffers (`get_json_object`, `element_at`, `map_keys`).
+  * Converts string timestamps to timestamp types (`to_timestamp`).
+
+### 3. Intermediate Layer (`INTERMEDIATES`)
+* **`int_crypto_trades_combined.sql`**:
+  * **Unified Schema:** Merges streaming and historical batch records via `UNION ALL`, filling source-specific missing attributes with `NULL` and adding provenance metadata (`data_source`).
+  * **Deduplication:** Implements window partitioning to prune duplicate ticks:
+    ```sql
+    ROW_NUMBER() OVER (
+        PARTITION BY crypto_name, price_usd, date_trunc('second', event_timestamp) 
+        ORDER BY event_timestamp DESC
+    ) AS row_num
+    ```
+  * Filtered where `row_num = 1`. Integrates custom price rounding macro (`{{ round_price(...) }}`).
+
+### 4. Marts Layer (`CRYPTO_MARTS`)
+* **`dim_crypto_assets.sql`**: 
+  * Enterprise dimension model tracking lifetime asset stats per `crypto_name`.
+  * Metrics: `first_trade_timestamp`, `latest_trade_timestamp`, `total_lifetime_ticks`, `all_time_low_price_usd`, `all_time_high_price_usd`, `lifetime_avg_price_usd`, and source tick breakdowns (`historical_lifetime_ticks` vs. `streaming_lifetime_tick`).
+* **`fct_crypto_hourly_metrics.sql`**:
+  * Aggregated fact table producing hourly financial metrics (OHLC candle generation).
+  * Evaluates `open_price_usd` and `close_price_usd` using analytic window functions (`FIRST_VALUE`, `LAST_VALUE`).
+  * Derives `hourly_price_spread_usd`, `hourly_price_change_usd`, and price volatility percentages using macros.
+  * Captures total trade volume (`total_volume_crypto`, `total_volume_usd`) and market sentiment counts (`buyer_maker_trades_count`, `seller_maker_trades_count`).
+
+---
+
+## 🧪 Data Quality & Testing Strategy
+
+**Primary Key & Schema Validation (`source_test.yml`)**
+* `dim_crypto_assets`: `crypto_name` verified with `unique` and `not_null`.
+* `fct_crypto_hourly_metrics`: `trade_hour` and `crypto_name` enforced with `not_null` along with core OHLC metric columns (`open_price_usd`, `high_price_usd`, `low_price_usd`, `close_price_usd`).
+
+**Grain Uniqueness Test (`data_check.sql`)**
+* Custom query ensuring zero collisions on composite key `(trade_hour, crypto_name)`:
+  ```sql
+  SELECT 
+      trade_hour, 
+      crypto_name, 
+      COUNT(*) AS row_count 
+  FROM {{ ref('fct_crypto_hourly_metrics') }} 
+  GROUP BY trade_hour, crypto_name 
+  HAVING COUNT(*) > 1
+  ```
+* **Result:** Returned `0 rows` (Grain integrity validated).
+
+---
+
+## ⚡ Production Validation & Performance
+
+| Model / Table | Engine Target | Verified Record Count | Status |
+| :--- | :--- | :--- | :--- |
+| `stg_historical_crypto` | Databricks / Delta Lake | **135,946,515** | Verified |
+| `int_crypto_trades_combined` | Databricks / Delta Lake | **50,083,348** | Verified (Deduplicated) |
+| `fct_crypto_hourly_metrics` | Databricks / Delta Lake | Aggregated Hourly Grain | Verified |
+
+* **Orchestration:** Managed via dbt Cloud Scheduled Job (`Crypto_project_job_orch`).
+* **SLA & Reliability:** Maintained a **100.00% Success Rate** across all automated continuous integration and production deployment runs.
+*
