@@ -248,76 +248,6 @@ End-to-End-crypto-streaming-pipeline/
 https://github.com/user-attachments/assets/55e7b127-0ee6-44b7-9ddb-ca574852441b
 
 
-# Data Landing & Azure Synapse Analytics Serving Layer
-
-This repository documents the end-to-end data landing mechanism from **Azure Databricks** to **Azure Data Lake Storage Gen2 (ADLS Gen2)**, along with the zero-copy serving layer configured in **Azure Synapse Analytics**.
-
----
-
-## 1. System Architecture & Component Flow
-
-The pipeline moves processed datasets from Databricks catalog tables into physical Delta Lake format across storage tiers, making them instantly queryable in Synapse Serverless SQL without data duplication:
-
-1. **Databricks Notebook (`Data_landing into containers gold & silver`)**: Extracts catalog tables and persists them as Delta Lake tables in ADLS Gen2.
-2. **ADLS Gen2 Storage Account (`awcriptoprojectstoracc`)**: 
-   * **Silver Container**: Stores raw historical and streaming datasets.
-   * **Gold Container**: Stores business-ready dimension and hourly metric fact tables.
-3. **Azure Synapse Analytics (`GoldAnalytics` Database)**: Configures passwordless authentication and Serverless SQL views (`OPENROWSET`) directly over Delta files.
-4. **Synapse Integration Pipeline (`triger_crypto`)**: Automates execution and synchronization.
-
----
-
-## 2. Data Landing Layer (Databricks PySpark Logic)
-
-The PySpark notebook handles secure storage authentication and writes catalog data into specific ADLS Gen2 storage containers:
-
-* **Security & Authentication**:
-  * Eliminates hardcoded credentials by retrieving storage keys dynamically using Databricks Secret Scope (`crypto-data-key` / `storagekey`).
-  * Configures Spark session options (`fs.azure.account.key`) to authorize direct writes to ADLS Gen2 over the ABFSS protocol.
-
-* **Gold Container Operations (`gold`)**:
-  * **`fct_crypto_hourly_metrics`**: Landed as a Delta table from catalog table `crypto_project_cat.default_default.fct_crypto_hourly_metrics` for high-speed hourly analytical queries.
-  * **`dim_crypto_assets`**: Landed as a Delta table from `crypto_project_cat.default_default.dim_crypto_assets` to serve as the master dimension reference.
-
-* **Silver Container Operations (`silver`)**:
-  * **`historical_crypto_data`**: Landed as a Delta table from `crypto_project_cat.default.historical_crypto_data` to preserve granular batch history.
-  * **`streaming_crypto_data`**: Landed as a Delta table from `crypto_project_cat.default.streaming_crypto_data` to store ingested real-time telemetry.
-
----
-
-## 3. Azure Synapse Serving Layer (Serverless SQL Logic)
-
-Azure Synapse Analytics acts as the virtual serving layer over the Gold storage container using two core SQL scripts:
-
-### A. Credentials & External Infrastructure Setup (`credentials_synapse`)
-* **Database Master Key**: Created in the `GoldAnalytics` database to secure database-level credentials.
-* **Database Scoped Credential (`SynapseStorageCredential`)**: Configured using **Azure Managed Identity** (`WITH IDENTITY = 'Managed Identity'`) for secure, passwordless authentication between Synapse and ADLS Gen2.
-* **External Data Source (`GoldStorageSource`)**: Defines an external endpoint targeting `https://awcryptoprojdataricks.dfs.core.windows.net/gold` using the Managed Identity credential.
-* **External File Format (`ParquetFormat`)**: Registers standard Parquet formatting definitions for external interactions.
-
-### B. Delta Lake Serverless Views (`data_view`)
-* **`dim_crypto_assets` View**: Reads Delta Lake files directly from the Gold container (`BULK 'dim_crypto_assets'`) using `OPENROWSET` over `GoldStorageSource`.
-* **`fct_crypto_hourly_metrics` View**: Maps the hourly metric Delta files (`BULK 'fct_crypto_hourly_metrics'`) using `OPENROWSET`, allowing downstream dashboards and analyst SQL queries to query live data with sub-second response times.
-
----
-
-## 4. Pipeline Orchestration & Trigger Mechanics
-
-Data synchronization and workflow orchestration are managed inside Azure Synapse Studio:
-
-* **Pipeline Name**: `triger_crypto`
-* **Orchestration Activity**: Contains wait and execution activities (`triger`) that coordinate storage refresh and view availability.
-* **Trigger Schedule**:
-  * **Recurrent Schedule Trigger**: Configured on an **8-Hour UTC recurrence interval** to periodically sync landing layers and update analytical views.
-  * **Manual Execution**: Supports ad-hoc, manual triggering (`Trigger Now`) for instant testing and backfills.
-* **Monitoring & SLA**: Verified run status of **Succeeded** in Synapse Activity Monitoring, ensuring pipeline reliability and zero downtime.
-*
-
-# video: 
-
-
-
-https://github.com/user-attachments/assets/696b542b-3292-4571-a056-5f1b0c32fed9
 
 
 ================================================================================
@@ -430,6 +360,185 @@ fig_str_p_d.show()
     - Execution Rationale: Isolating average trade size against volume allows 
       detecting whether high volume is driven by organic retail participation 
       or institutional algorithmic execution (TWAP/VWAP iceberg orders).
+
+
+
+
+      video:
+
+https://github.com/user-attachments/assets/510b8452-0a86-4a18-80d0-67747a35c458
+
+
+
+
+# Data Landing & Azure Synapse Analytics Serving Layer
+
+This repository documents the end-to-end data landing mechanism from **Azure Databricks** to **Azure Data Lake Storage Gen2 (ADLS Gen2)**, along with the zero-copy serving layer configured in **Azure Synapse Analytics**.
+
+---
+
+## 1. System Architecture & Component Flow
+
+The pipeline moves processed datasets from Databricks catalog tables into physical Delta Lake format across storage tiers, making them instantly queryable in Synapse Serverless SQL without data duplication:
+
+1. **Databricks Notebook (`Data_landing into containers gold & silver`)**: Extracts catalog tables and persists them as Delta Lake tables in ADLS Gen2.
+2. **ADLS Gen2 Storage Account (`awcriptoprojectstoracc`)**: 
+   * **Silver Container**: Stores raw historical and streaming datasets.
+   * **Gold Container**: Stores business-ready dimension and hourly metric fact tables.
+3. **Azure Synapse Analytics (`GoldAnalytics` Database)**: Configures passwordless authentication and Serverless SQL views (`OPENROWSET`) directly over Delta files.
+4. **Synapse Integration Pipeline (`triger_crypto`)**: Automates execution and synchronization.
+
+---
+
+## 2. Data Landing Layer (Databricks PySpark Logic)
+
+The PySpark notebook handles secure storage authentication and writes catalog data into specific ADLS Gen2 storage containers:
+
+* **Security & Authentication**:
+  * Eliminates hardcoded credentials by retrieving storage keys dynamically using Databricks Secret Scope (`crypto-data-key` / `storagekey`).
+  * Configures Spark session options (`fs.azure.account.key`) to authorize direct writes to ADLS Gen2 over the ABFSS protocol.
+
+* **Gold Container Operations (`gold`)**:
+  * **`fct_crypto_hourly_metrics`**: Landed as a Delta table from catalog table `crypto_project_cat.default_default.fct_crypto_hourly_metrics` for high-speed hourly analytical queries.
+  * **`dim_crypto_assets`**: Landed as a Delta table from `crypto_project_cat.default_default.dim_crypto_assets` to serve as the master dimension reference.
+
+* **Silver Container Operations (`silver`)**:
+  * **`historical_crypto_data`**: Landed as a Delta table from `crypto_project_cat.default.historical_crypto_data` to preserve granular batch history.
+  * **`streaming_crypto_data`**: Landed as a Delta table from `crypto_project_cat.default.streaming_crypto_data` to store ingested real-time telemetry.
+
+---
+
+## 3. Azure Synapse Serving Layer (Serverless SQL Logic)
+
+Azure Synapse Analytics acts as the virtual serving layer over the Gold storage container using two core SQL scripts:
+
+### A. Credentials & External Infrastructure Setup (`credentials_synapse`)
+* **Database Master Key**: Created in the `GoldAnalytics` database to secure database-level credentials.
+* **Database Scoped Credential (`SynapseStorageCredential`)**: Configured using **Azure Managed Identity** (`WITH IDENTITY = 'Managed Identity'`) for secure, passwordless authentication between Synapse and ADLS Gen2.
+* **External Data Source (`GoldStorageSource`)**: Defines an external endpoint targeting `https://awcryptoprojdataricks.dfs.core.windows.net/gold` using the Managed Identity credential.
+* **External File Format (`ParquetFormat`)**: Registers standard Parquet formatting definitions for external interactions.
+
+### B. Delta Lake Serverless Views (`data_view`)
+* **`dim_crypto_assets` View**: Reads Delta Lake files directly from the Gold container (`BULK 'dim_crypto_assets'`) using `OPENROWSET` over `GoldStorageSource`.
+* **`fct_crypto_hourly_metrics` View**: Maps the hourly metric Delta files (`BULK 'fct_crypto_hourly_metrics'`) using `OPENROWSET`, allowing downstream dashboards and analyst SQL queries to query live data with sub-second response times.
+
+---
+
+## 4. Pipeline Orchestration & Trigger Mechanics
+
+Data synchronization and workflow orchestration are managed inside Azure Synapse Studio:
+
+* **Pipeline Name**: `triger_crypto`
+* **Orchestration Activity**: Contains wait and execution activities (`triger`) that coordinate storage refresh and view availability.
+* **Trigger Schedule**:
+  * **Recurrent Schedule Trigger**: Configured on an **8-Hour UTC recurrence interval** to periodically sync landing layers and update analytical views.
+  * **Manual Execution**: Supports ad-hoc, manual triggering (`Trigger Now`) for instant testing and backfills.
+* **Monitoring & SLA**: Verified run status of **Succeeded** in Synapse Activity Monitoring, ensuring pipeline reliability and zero downtime.
+*
+
+# video: 
+
+
+
+https://github.com/user-attachments/assets/696b542b-3292-4571-a056-5f1b0c32fed9
+
+
+
+--------------------------------------------------------------------------------
+# Python Insights & Feature Engineering
+--------------------------------------------------------------------------------
+
+* AZURE SECURE AUTHENTICATION & DATA INGESTION:
+  - Token Fetching: Acquires short-lived OAuth access tokens from Azure Entra 
+    ID (Active Directory) using Interactive Browser Credentials.
+  - Endpoint Target: Injects the token directly into the pyodbc driver connection 
+    attribute (SQL_COPT_SS_ACCESS_TOKEN = 1256) to query Gold-layer Fact and 
+    Dimension tables directly from Azure Synapse Serverless SQL Pool 
+    (awcryptoproject-ondemand.sql.azuresynapse.net / GoldAnalytics DB).
+
+* FEATURE ENGINEERING & VECTORIZED TRANSFORMATIONS:
+  - Order Flow Imbalance Ratio: Evaluates buyer vs. seller maker aggression 
+    scale (-1.0 to +1.0) by normalizing net maker trade differences over total ticks.
+  - Trade Sizing & Volume Weighting: Computes Average Trade Size (USD Volume / 
+    Tick Count) and Volume-Weighted Average Price (VWAP = Total USD Volume / 
+    Total Crypto Volume).
+  - Price Drift & Volatility Scaling: Measures Structural Price Drift (%) by 
+    evaluating current hourly prices against lifetime moving averages, and scales 
+    hourly price spreads against historical baseline to derive Normalized Volatility (%).
+  - Pipeline Telemetry: Monitors operational health (0.0 to 1.0 ratio) by tracking 
+    real-time streaming tick contributions against total tick ingestion.
+
+* INTERACTIVE VISUALIZATION ENGINE:
+  - Dashboard Rendering: Leverages Plotly Express with dark styling ('plotly_dark') 
+    to generate interactive time-series area fills, multi-variable scatter matrices, 
+    and horizontal SLA threshold reference boundaries.
+
+
+--------------------------------------------------------------------------------
+2. REFINED ROOT-CAUSE ANALYTICAL INSIGHTS & BUSINESS RATIONALE ("THE WHY")
+--------------------------------------------------------------------------------
+
+[ INGESTION PIPELINE HEALTH VS 80% SLA THRESHOLD ]
+
+  * OBSERVATION:
+    The streaming health ratio steadily rises from 0.0 (Jan 2025 batch-only) 
+    to cross the 80% SLA threshold in May 2026, reaching ~90% real-time streaming 
+    coverage by mid-2026.
+
+  * BUSINESS RATIONALE ("THE WHY"):
+    - Legacy Bottleneck: Early 2025 relied on batch-scheduled ELT pipelines, 
+      causing analytical dashboards to run on 1-to-24-hour delayed snapshots.
+    - Architecture Migration: The upward trajectory represents an active engineering 
+      transition to real-time event streaming (Kafka / Azure Event Hubs).
+    - Operational Impact: Crossing the 80% SLA threshold guarantees that 
+      downstream quantitative models and Synapse reporting layers consume live 
+      order-book telemetry rather than stale batch data.
+
+
+[ STRUCTURAL LIFETIME PRICE DRIFT (%) ]
+
+  * OBSERVATION:
+    High initial noise (+10% to -10%) in Q1 2025 transitions into a sustained 
+    downward drift from mid-2025 through 2026, settling at -35% to -40% deviation 
+    relative to the lifetime historical average.
+
+  * BUSINESS RATIONALE ("THE WHY"):
+    - Regime Shift Detection: Standard mean-reversion algorithms assume asset 
+      prices naturally decay back toward historical baseline averages.
+    - Risk & Model Calibration: The persistent negative drift proves a structural 
+      macro valuation shift. Tracking this metric forces automated trading 
+      algorithms to decay historical weights and adjust risk parameters rather 
+      than making faulty mean-reversion assumptions.
+
+
+[ ORDER FLOW IMBALANCE RATIO ]
+
+  * OBSERVATION:
+    Cross-asset order imbalance metrics tightly oscillate around the neutral 
+    zero boundary line (y=0).
+
+  * BUSINESS RATIONALE ("THE WHY"):
+    - Microstructure Aggression: Measures buy-side maker volume versus sell-side 
+      maker volume normalized across trade ticks.
+    - Market State: Tightly bounded oscillation confirms market neutrality 
+      without continuous directional bias. Sustained breakouts beyond neutral 
+      thresholds (+0.5 or -0.5) serve as early warning indicators for institutional 
+      liquidity sweeps prior to major price breakouts.
+
+
+[ WHALE ACTIVITY & LIQUIDITY MATRIX ]
+
+  * OBSERVATION:
+    Retail transactions dense-cluster below $100M total volume with low average 
+    trade sizes ($500–$1,500), whereas institutional whale transactions isolate 
+    as distinct high-volume outliers ($300M+ total volume).
+
+  * BUSINESS RATIONALE ("THE WHY"):
+    - Execution Impact: Institutional traders avoid single market-sweep orders 
+      to prevent order-book depletion and severe price slippage.
+    - Algorithmic Tracking: Plotting average trade size against total volume 
+      helps distinguish organic retail participation from algorithmic TWAP/VWAP 
+      iceberg execution utilized by institutional whales.
 
 
 
