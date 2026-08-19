@@ -53,6 +53,13 @@ Instead of collecting data in large batch files, this pipeline continuously capt
   * **Incoming Messages**: ~179 total requests processed across monitoring windows with zero server errors (`Server Errors = 0`).
   * **Landed Volume**: ~87.11 KB of binary Avro files landed directly into the Bronze Container.
   * **Throughput**: Steady ingestion rate peaking between 1.4 KB/s and 2.51 KB/s.
+ 
+ # Video :
+ 
+
+https://github.com/user-attachments/assets/ecd6a2dc-5dd3-480e-bb0d-2f7593c08ed4
+
+
 
 ---
 
