@@ -1,35 +1,39 @@
-# 🪙 Enterprise Crypto Hybrid Data Engine (Batch & Real-Time)
+# 🟡 Enterprise Crypto Hybrid Data Engine (Batch & Real-Time)
 
-[![Azure Data Factory](https://img.shields.io/badge/Azure%20Data%20Factory-0078D4?style=for-the-badge&logo=azure-data-factory&logoColor=white)](https://azure.microsoft.com/en-us/products/data-factory)
-[![Azure Logic Apps](https://img.shields.io/badge/Azure%20Logic%20Apps-0078D4?style=for-the-badge&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/en-us/products/logic-apps)
-[![Azure Event Hubs](https://img.shields.io/badge/Azure%20Event%20Hubs-0078D4?style=for-the-badge&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/en-us/products/event-hubs)
-[![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=for-the-badge&logo=databricks&logoColor=white)](https://databricks.com/)
-[![Azure Storage](https://img.shields.io/badge/Azure%20Data%20Lake-0078D4?style=for-the-badge&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/en-us/products/storage/data-lake-storage/)
+![Azure Data Factory](https://img.shields.io/badge/AZURE_DATA_FACTORY-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![Azure Logic Apps](https://img.shields.io/badge/AZURE_LOGIC_APPS-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![Azure Event Hubs](https://img.shields.io/badge/AZURE_EVENT_HUBS-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![Databricks](https://img.shields.io/badge/DATABRICKS-FF3621?style=for-the-badge&logo=databricks&logoColor=white)
+![Azure Data Lake](https://img.shields.io/badge/AZURE_DATA_LAKE-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![dbt Cloud](https://img.shields.io/badge/DBT_CLOUD-FF694B?style=for-the-badge&logo=dbt&logoColor=white)
 
 | Workflow Stage | Tool / Technology | Tool Category | System Function & Core Architecture Role |
-|---|---|---|---|
-| 1. Batch Ingestion | Azure Data Factory (ADF) | Cloud Data Integration | Fetches raw zipped historical trade CSVs from Binance Vision to ADLS Gen2 Bronze container. |
-| 2. Real-Time Producer | Azure Logic Apps | Serverless Workflow | Triggers every 2 mins to pull live BTC spot pricing payloads from CoinGecko REST API. |
-| 3. Event Streaming | Azure Event Hubs (Capture) | Real-Time Event Broker | Ingests high-frequency streams and auto-captures payloads directly into Bronze as Avro binary. |
-| 4. Lakehouse Storage | Azure Data Lake Storage Gen2 | Cloud Object Storage | Stores immutable raw data (Bronze), clean Delta tables (Silver), and aggregated marts (Gold). |
-| 5. Stream Processing | Azure Databricks (PySpark) | Distributed Compute | Decodes Avro binary files to UTF-8 JSON, applies schema, and schedules 4-hour batch workflows. |
-| 6. Lakehouse Catalog | Delta Lake (Unity Catalog) | Storage Format & Governance | Guarantees ACID transactions, schema enforcement, and unified catalog management across layers. |
-| 7. Data Transformation | dbt Cloud | Analytics Engineering | Deduplicates 135M+ trades, normalizes schemas, and aggregates ticks into hourly OHLC metrics. |
-| 8. Analytics Serving | Azure Synapse Serverless SQL | Serverless Data Warehouse | Exposes zero-copy Gold Delta views using OPENROWSET for sub-second analyst querying. |
-| 9. Security & Secrets | Azure Entra ID / Key Vault | Identity & Key Management | Manages passwordless Managed Identity access, OAuth tokens, and secure secret scope keys. |
-| 10. Quant Analysis | Python (Pandas/NumPy) & PyODBC | Data Analytics & Modeling | Engineers Order Flow Imbalance, VWAP, Price Drift, and connects securely via token injection. |
-| 11. Visual Dashboards | Plotly Express (plotly_dark) | Interactive Visualization | Renders dark-themed time-series area charts, scatter matrices, and SLA threshold lines. |
+| :--- | :--- | :--- | :--- |
+| **1. Batch Ingestion** | Azure Data Factory (ADF) | Cloud Data Integration | Fetches raw zipped historical trade CSVs from Binance Vision to ADLS Gen2 Bronze container. |
+| **2. Real-Time Producer** | Azure Logic Apps | Serverless Workflow | Triggers every 2 mins to pull live BTC spot pricing payloads from CoinGecko REST API. |
+| **3. Event Streaming** | Azure Event Hubs (Capture) | Real-Time Event Broker | Ingests high-frequency streams and auto-captures payloads directly into Bronze as Avro binary. |
+| **4. Lakehouse Storage** | Azure Data Lake Storage Gen2 | Cloud Object Storage | Stores immutable raw data (Bronze), clean Delta tables (Silver), and aggregated marts (Gold). |
+| **5. Stream Processing** | Azure Databricks (PySpark) | Distributed Compute | Decodes Avro binary files to UTF-8 JSON, applies schema, and schedules 4-hour batch workflows. |
+| **6. Lakehouse Catalog** | Delta Lake (Unity Catalog) | Storage Format & Governance | Guarantees ACID transactions, schema enforcement, and unified catalog management across layers. |
+| **7. Data Transformation** | dbt Cloud | Analytics Engineering | Deduplicates 135M+ trades, normalizes schemas, and aggregates ticks into hourly OHLC metrics. |
+| **8. Analytics Serving** | Azure Synapse Serverless SQL | Serverless Data Warehouse | Exposes zero-copy Gold Delta views using `OPENROWSET` for sub-second analyst querying. |
+| **9. Security & Secrets** | Azure Entra ID / Key Vault | Identity & Key Management | Manages passwordless Managed Identity access, OAuth tokens, and secure secret scope keys. |
+| **10. Quant Analysis** | Python (Pandas/NumPy) & PyODBC | Data Analytics & Modeling | Engineers Order Flow Imbalance, VWAP, Price Drift, and connects securely via token injection. |
+| **11. Visual Dashboards** | Plotly Express (`plotly_dark`) | Interactive Visualization | Renders dark-themed time-series area charts, scatter matrices, and SLA threshold lines. |
 
 ---
 
-## 📌 Executive Summary & Hybrid Strategy
+## 📌 Executive Summary & Architecture Strategy
 
-This project delivers an end-to-end data engineering platform on **Microsoft Azure** designed to capture both historical trade archives and high-frequency live market signals for cryptocurrency pairs (focusing on BTC/USDT).
+This project delivers an end-to-end data engineering platform on Microsoft Azure designed to capture both historical trade archives and high-frequency live market signals for cryptocurrency pairs (focusing on BTC/USDT).
 
 ### 🎯 Key Engineering Goals
-* **Dual-Ingestion Pipeline**: Integrates high-volume **Batch historical backfills** with low-latency **Real-Time price streaming** within a unified cloud architecture.
-* **Cost-Optimized Ingestion**: Utilizes serverless orchestration (Azure Logic Apps & Data Factory) to eliminate continuous compute costs while fetching compressed raw files and REST API payloads.
-* **Medallion Architecture Foundation**: Raw historical zips and live JSON streams land directly into the **Bronze Storage Layer**, forming an immutable landing zone ready for PySpark/Databricks transformation.
+
+* **Unified Kappa Architecture:** Combines historical batch backfills and low-latency real-time streams into a single log-centric pipeline, processing all data through a single Delta Lake engine without dual-codebase maintenance.
+* **Medallion Layered Storage:** Structured into Bronze (immutable raw data landing), Silver (cleansed, deduplicated trade records), and Gold (aggregated analytical marts) layers managed via Unity Catalog.
+* **Cost-Optimized Ingestion:** Utilizes serverless orchestration (Azure Logic Apps & Data Factory) to eliminate continuous compute costs while fetching compressed raw files and REST API payloads.
+* **Sub-Second Analytics:** Enables zero-copy querying via Azure Synapse Serverless SQL directly over Gold Delta tables for rapid quantitative analysis.
+
 
 ---
 
